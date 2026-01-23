@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String?
+  passwordHash String
+  role         String       @default("ADMIN")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  invoices     Invoice[]    @relation("InvoiceCreatedBy")
+  messages     MessageLog[] @relation("MessageSentBy")
+
+  accounts     Account[]
+  sessions     Session[]
+}
+
+model Invoice {
+  id               String      @id @default(cuid())
+  invoiceNo        String      @unique
+  customerName     String?
+  mobile           String?
+  deviceType       String?
+  problem          String?
+  staffReceiver    String?
+  deviceStatus     String      @default("NEW")
+  isDelivered      Boolean     @default(false)
+  receiverName     String?
+  receivedAt       DateTime    @default(now())
+  deliveredAt      DateTime?
+  contactedCustomer Boolean    @default(false)
+  agreedPrice      Float?
+  notes            String?
+  createdByUserId  String?
+  createdByUser    User?       @relation("InvoiceCreatedBy", fields: [createdByUserId], references: [id])
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  messages         MessageLog[]
+
+  @@index([invoiceNo])
+  @@index([mobile])
+}
+
+model MessageTemplate {
+  id        String         @id @default(cuid())
+  channel   String
+  code      String         @unique
+  titleAr   String
+  bodyAr    String
+  enabled   Boolean        @default(true)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model MessageLog {
+  id             String         @id @default(cuid())
+  invoiceId      String?
+  invoice        Invoice?       @relation(fields: [invoiceId], references: [id])
+  channel        String
+  templateCode   String?
+  toMobile       String
+  messageBody    String
+  status         String         @default("QUEUED")
+  providerResponse String?
+  sentByUserId   String?
+  sentByUser     User?          @relation("MessageSentBy", fields: [sentByUserId], references: [id])
+  createdAt      DateTime       @default(now())
+
+  @@index([channel])
+  @@index([templateCode])
+}
+
+model Settings {
+  id           Int      @id @default(1)
+  shopName     String
+  shopPhone    String
+  vatRate      Float    @default(0.15)
+  whatsappApiKey String?
+  smsApiKey     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model InvoiceCounter {
+  id      String @id @default(cuid())
+  dateKey String @unique
+  counter Int    @default(0)
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
