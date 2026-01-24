@@ -18,6 +18,8 @@ function getRequestId(req: NextApiRequest) {
 export function withApiHandler(handler: Handler) {
   return async (req: NextApiRequest, res: NextApiResponse) => {
     const requestId = getRequestId(req);
+    (req as any).requestId = requestId;
+    res.setHeader("x-request-id", requestId);
     try {
       await handler(req, res, { requestId });
     } catch (error) {

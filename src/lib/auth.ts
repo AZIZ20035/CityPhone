@@ -12,6 +12,15 @@ export type SessionUser = {
 
 export async function getSessionUser(req: NextApiRequest, res: NextApiResponse) {
   const session = await getServerSession(req, res, authOptions);
+  if (!session) {
+    const requestId = (req as any).requestId ?? req.headers["x-request-id"];
+    console.warn("AUTH_MISSING_SESSION", {
+      requestId,
+      path: req.url,
+      method: req.method,
+      code: "UNAUTHORIZED"
+    });
+  }
   return session?.user as SessionUser | undefined;
 }
 

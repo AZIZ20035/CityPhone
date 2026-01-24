@@ -54,3 +54,11 @@ cp dev.db backup.db
 - بعد تحديث `DATABASE_URL`:
   - إمّا `npx prisma db push`
   - أو `npx prisma migrate deploy` إذا كنت تستخدم migrations في الإنتاج.
+
+## ملاحظة مهمة
+- يجب تثبيت قيمة `NEXTAUTH_SECRET` وعدم تغييرها بين عمليات النشر، لأن تغييره يُبطل الجلسات.
+
+## تشغيل سريع (أمر واحد)
+```
+npm install && npx prisma generate && npx prisma db push && npm run dev
+```

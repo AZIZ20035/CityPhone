@@ -27,8 +27,7 @@ export const authOptions: NextAuthOptions = {
         const bypassEnabled =
           process.env.AUTH_BYPASS === "true" &&
           process.env.NODE_ENV !== "production";
-        const adminId =
-          process.env.ADMIN_ID ?? "cmkrp742n000014hh2f6546u3";
+        const adminId = process.env.ADMIN_ID;
 
         if (
           (adminEmail && email === adminEmail && credentials.password === adminPassword) ||
@@ -38,6 +37,14 @@ export const authOptions: NextAuthOptions = {
             ? await bcrypt.hash(adminPassword, 10)
             : await bcrypt.hash(Math.random().toString(36), 10);
 
+          const createData = {
+            email,
+            name: "Admin",
+            role: "ADMIN",
+            passwordHash,
+            ...(adminId ? { id: adminId } : {})
+          };
+
           const user = await prisma.user.upsert({
             where: { email },
             update: {
@@ -45,13 +52,7 @@ export const authOptions: NextAuthOptions = {
               role: "ADMIN",
               passwordHash
             },
-            create: {
-              id: adminId,
-              email,
-              name: "Admin",
-              role: "ADMIN",
-              passwordHash
-            }
+            create: createData
           });
 
           return {
