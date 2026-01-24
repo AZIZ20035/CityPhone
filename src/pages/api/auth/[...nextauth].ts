@@ -17,20 +17,18 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        // هذا الكود سيبحث عن المستخدم بالإيميل فقط ويسمح بالدخول فوراً
-        const user = await prisma.user.findUnique({
-          where: { email: credentials?.email }
-        });
-      
-        if (!user) return null;
-      
-        // حذفنا شرط التحقق من كلمة المرور تماماً (bcrypt)
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role
-        };
+        // إذا كان الإيميل المدخل هو إيميل الأدمن، اسمح بالدخول فوراً بأي كلمة مرور
+        if (credentials?.email?.toLowerCase() === "admin@local.test") {
+          return {
+            id: "admin-id",
+            email: "admin@local.test",
+            name: "Admin User",
+            role: "ADMIN"
+          };
+        }
+        
+        // إذا فشل ما سبق، لا تسمح بالدخول
+        return null;
       }
     })
   ],
