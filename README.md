@@ -49,3 +49,8 @@ cp dev.db backup.db
 - واجهة RTL افتراضية للغة العربية.
 - إرسال واتساب يتم عبر رابط `wa.me` مع نص مُولد ديناميكياً.
 - للإنتاج يمكن التحويل إلى PostgreSQL بتغيير `DATABASE_URL` وموفر `provider` في Prisma.
+
+## النشر (PostgreSQL)
+- بعد تحديث `DATABASE_URL`:
+  - إمّا `npx prisma db push`
+  - أو `npx prisma migrate deploy` إذا كنت تستخدم migrations في الإنتاج.

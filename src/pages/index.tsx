@@ -5,6 +5,7 @@ import Layout from "@/components/Layout";
 import Input from "@/components/Input";
 import { useEffect, useState } from "react";
 import { isValidKsaMobile, normalizeMobile } from "@/lib/phone";
+import { safeFetchJson } from "@/lib/apiClient";
 
 export default function Home() {
   const [customerName, setCustomerName] = useState("");
@@ -41,25 +42,23 @@ export default function Home() {
       return;
     }
     setSaving(true);
-    const res = await fetch("/api/invoices", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        customerName,
-        mobile,
-        deviceType,
-        problem,
-        staffReceiver,
-        agreedPrice
-      })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error ?? "تعذر حفظ الفاتورة");
-      setSaving(false);
-      return;
+    try {
+      const data = await safeFetchJson<{ invoice: any }>("/api/invoices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerName,
+          mobile,
+          deviceType,
+          problem,
+          staffReceiver,
+          agreedPrice
+        })
+      });
+      setSavedInvoice(data.invoice);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذر حفظ الفاتورة");
     }
-    setSavedInvoice(data.invoice);
     setSaving(false);
   }
 
@@ -98,20 +97,19 @@ export default function Home() {
   async function sendMessage(channel: "WHATSAPP" | "SMS") {
     if (!savedInvoice?.id) return;
     setSending(true);
-    const res = await fetch("/api/messages/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        invoiceId: savedInvoice.id,
-        channel,
-        customBody: messageText
-      })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error ?? "تعذر إرسال الرسالة");
-    } else {
+    try {
+      const data = await safeFetchJson<{ url: string }>("/api/messages/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoiceId: savedInvoice.id,
+          channel,
+          customBody: messageText
+        })
+      });
       window.open(data.url, "_blank");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذر إرسال الرسالة");
     }
     setSending(false);
   }

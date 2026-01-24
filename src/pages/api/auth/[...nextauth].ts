@@ -17,16 +17,64 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        // نستخدم البيانات الظاهرة في صورة جدول Supabase تماماً
-        if (credentials?.email?.toLowerCase() === "admin@local.test") {
+        if (!credentials?.email || !credentials.password) {
+          return null;
+        }
+
+        const email = credentials.email.toLowerCase();
+        const adminEmail = (process.env.ADMIN_EMAIL ?? "").toLowerCase();
+        const adminPassword = process.env.ADMIN_PASSWORD ?? "";
+        const bypassEnabled =
+          process.env.AUTH_BYPASS === "true" &&
+          process.env.NODE_ENV !== "production";
+        const adminId =
+          process.env.ADMIN_ID ?? "cmkrp742n000014hh2f6546u3";
+
+        if (
+          (adminEmail && email === adminEmail && credentials.password === adminPassword) ||
+          (bypassEnabled && email === adminEmail)
+        ) {
+          const passwordHash = adminPassword
+            ? await bcrypt.hash(adminPassword, 10)
+            : await bcrypt.hash(Math.random().toString(36), 10);
+
+          const user = await prisma.user.upsert({
+            where: { email },
+            update: {
+              name: "Admin",
+              role: "ADMIN",
+              passwordHash
+            },
+            create: {
+              id: adminId,
+              email,
+              name: "Admin",
+              role: "ADMIN",
+              passwordHash
+            }
+          });
+
           return {
-            id: "cmkrp742n000014hh2f6546u3", // هذا هو الـ ID الحقيقي من صورتك
-            email: "admin@local.test",
-            name: "Admin",
-            role: "ADMIN"
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role
           };
-        }        
-        return null;
+        }
+
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) return null;
+        const valid = await bcrypt.compare(
+          credentials.password,
+          user.passwordHash
+        );
+        if (!valid) return null;
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role
+        };
       }
     })
   ],

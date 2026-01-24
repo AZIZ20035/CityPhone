@@ -4,8 +4,9 @@ import { getSessionUser } from "@/lib/auth";
 import { normalizeMobile } from "@/lib/phone";
 import { renderTemplate } from "@/lib/templates";
 import { MessageStatuses } from "@/lib/constants";
+import { withApiHandler } from "@/lib/api";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   const user = await getSessionUser(req, res);
   if (!user) return res.status(401).json({ error: "UNAUTHORIZED" });
 
@@ -65,3 +66,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   return res.status(200).json({ url, log });
 }
+
+export default withApiHandler(handler);

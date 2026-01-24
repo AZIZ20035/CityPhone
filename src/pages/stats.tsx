@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Layout from "@/components/Layout";
+import { safeFetchJson } from "@/lib/apiClient";
 import { getServerSession } from "next-auth";
 import type { GetServerSideProps } from "next";
 import { authOptions } from "./api/auth/[...nextauth]";
@@ -16,10 +17,9 @@ export default function StatsPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
 
   useEffect(() => {
-    fetch("/api/invoices")
-      .then((res) => res.json())
+    safeFetchJson<{ invoices: Invoice[] }>("/api/invoices")
       .then((data) => setInvoices(data.invoices ?? []))
-      .catch(() => {});
+      .catch(() => setInvoices([]));
   }, []);
 
   const stats = useMemo(() => {

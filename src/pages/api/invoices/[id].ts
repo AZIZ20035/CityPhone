@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import { withApiHandler } from "@/lib/api";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   const user = await getSessionUser(req, res);
   if (!user) return res.status(401).json({ error: "UNAUTHORIZED" });
 
@@ -59,3 +60,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   return res.status(405).json({ error: "METHOD_NOT_ALLOWED" });
 }
+
+export default withApiHandler(handler);

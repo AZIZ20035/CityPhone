@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   const adminEmail = process.env.ADMIN_EMAIL ?? "admin@local.test";
-  const adminPassword = "City123Phone123";
+const adminPassword = process.env.ADMIN_PASSWORD ?? "Admin12345";
   const adminName = process.env.ADMIN_NAME ?? "Admin";
 
   const passwordHash = await bcrypt.hash(adminPassword, 10);
@@ -21,18 +21,18 @@ async function main() {
     }
   });
 
-  await prisma.user.deleteMany({
-    where: { email: adminEmail }
-  });
+await prisma.user.deleteMany({
+  where: { email: adminEmail }
+});
 
-  await prisma.user.create({
-    data: {
-      email: adminEmail,
-      name: adminName,
-      role: "ADMIN",
-      passwordHash
-    }
-  });
+await prisma.user.create({
+  data: {
+    email: adminEmail,
+    name: adminName,
+    role: "ADMIN",
+    passwordHash
+  }
+});
 
   const templates = [
     {

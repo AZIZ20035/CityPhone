@@ -5,6 +5,7 @@ import Input from "@/components/Input";
 import Select from "@/components/Select";
 import TextArea from "@/components/TextArea";
 import { isValidKsaMobile, normalizeMobile } from "@/lib/phone";
+import { safeFetchJson } from "@/lib/apiClient";
 import { getServerSession } from "next-auth";
 import type { GetServerSideProps } from "next";
 import { authOptions } from "../api/auth/[...nextauth]";
@@ -37,15 +38,23 @@ export default function InvoiceDetails() {
 
   async function load() {
     if (!id) return;
-    const res = await fetch(`/api/invoices/${id}`);
-    const data = await res.json();
-    setInvoice(data.invoice);
+    try {
+      const data = await safeFetchJson<{ invoice: any }>(
+        `/api/invoices/${id}`
+      );
+      setInvoice(data.invoice);
+    } catch {
+      setInvoice(null);
+    }
   }
 
   async function loadSettings() {
-    const res = await fetch("/api/settings");
-    const data = await res.json();
-    setSettings(data.settings ?? null);
+    try {
+      const data = await safeFetchJson<{ settings: any }>("/api/settings");
+      setSettings(data.settings ?? null);
+    } catch {
+      setSettings(null);
+    }
   }
 
   useEffect(() => {
@@ -56,28 +65,27 @@ export default function InvoiceDetails() {
   async function save() {
     setSaving(true);
     setError("");
-    const res = await fetch(`/api/invoices/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        deviceStatus: invoice.deviceStatus,
-        contactedCustomer: invoice.contactedCustomer,
-        agreedPrice: invoice.agreedPrice,
-        notes: invoice.notes,
-        customerName: invoice.customerName,
-        mobile: invoice.mobile,
-        deviceType: invoice.deviceType,
-        problem: invoice.problem,
-        staffReceiver: invoice.staffReceiver,
-        isDelivered: invoice.isDelivered,
-        receiverName: invoice.receiverName
-      })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error ?? "تعذر حفظ التعديلات");
-    } else {
+    try {
+      const data = await safeFetchJson<{ invoice: any }>(`/api/invoices/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          deviceStatus: invoice.deviceStatus,
+          contactedCustomer: invoice.contactedCustomer,
+          agreedPrice: invoice.agreedPrice,
+          notes: invoice.notes,
+          customerName: invoice.customerName,
+          mobile: invoice.mobile,
+          deviceType: invoice.deviceType,
+          problem: invoice.problem,
+          staffReceiver: invoice.staffReceiver,
+          isDelivered: invoice.isDelivered,
+          receiverName: invoice.receiverName
+        })
+      });
       setInvoice(data.invoice);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذر حفظ التعديلات");
     }
     setSaving(false);
   }
@@ -124,26 +132,25 @@ export default function InvoiceDetails() {
     if (!canSend) return;
     setSending(true);
     setError("");
-    const res = await fetch("/api/messages/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        invoiceId: invoice.id,
-        channel,
-        customBody: composerMessage
-      })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error ?? "تعذر إرسال الرسالة");
-    } else {
+    try {
+      const data = await safeFetchJson<{ url: string }>("/api/messages/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoiceId: invoice.id,
+          channel,
+          customBody: composerMessage
+        })
+      });
       window.open(data.url, "_blank");
-      await fetch(`/api/invoices/${invoice.id}`, {
+      await safeFetchJson(`/api/invoices/${invoice.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contactedCustomer: true })
       });
       setInvoice((prev: any) => ({ ...prev, contactedCustomer: true }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذر إرسال الرسالة");
     }
     setSending(false);
     setComposerOpen(false);
@@ -370,7 +377,9 @@ export default function InvoiceDetails() {
             </button>
             {!canSend && (
               <span className="text-sm text-rose-600">
-                لا يمكن التواصل بدون رقم جوال صحيح.
+                {invoice.deviceStatus === "NO_PARTS"
+                  ? "داخلي – لا يُرسل للعميل."
+                  : "لا يمكن التواصل بدون رقم جوال صحيح."}
               </span>
             )}
           </div>

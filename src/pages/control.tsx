@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { useRouter } from "next/router";
+import { safeFetchJson } from "@/lib/apiClient";
 import { getServerSession } from "next-auth";
 import type { GetServerSideProps } from "next";
 import { authOptions } from "./api/auth/[...nextauth]";
@@ -50,9 +51,12 @@ export default function ControlPanel() {
   const [delivering, setDelivering] = useState(false);
 
   async function load() {
-    const res = await fetch("/api/invoices");
-    const data = await res.json();
-    setInvoices(data.invoices ?? []);
+    try {
+      const data = await safeFetchJson<{ invoices: Invoice[] }>("/api/invoices");
+      setInvoices(data.invoices ?? []);
+    } catch (err) {
+      setInvoices([]);
+    }
   }
 
   useEffect(() => {
@@ -289,7 +293,7 @@ export default function ControlPanel() {
                 className="rounded bg-slate-900 px-4 py-2 text-sm text-white"
                 onClick={async () => {
                   setDelivering(true);
-                  const res = await fetch(
+                  const data = await safeFetchJson<{ invoice: Invoice }>(
                     `/api/invoices/${deliverTarget.id}`,
                     {
                       method: "PATCH",
@@ -301,15 +305,12 @@ export default function ControlPanel() {
                       })
                     }
                   );
-                  const data = await res.json();
-                  if (res.ok) {
                     setInvoices((prev) =>
                       prev.map((inv) =>
                         inv.id === deliverTarget.id ? data.invoice : inv
                       )
                     );
                     setDeliverTarget(null);
-                  }
                   setDelivering(false);
                 }}
                 disabled={delivering}

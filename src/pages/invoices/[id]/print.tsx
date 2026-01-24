@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { getServerSession } from "next-auth";
 import type { GetServerSideProps } from "next";
 import { authOptions } from "../../api/auth/[...nextauth]";
+import { safeFetchJson } from "@/lib/apiClient";
 
 export default function InvoicePrint() {
   const router = useRouter();
@@ -13,12 +14,10 @@ export default function InvoicePrint() {
 
   useEffect(() => {
     if (!id) return;
-    fetch(`/api/invoices/${id}`)
-      .then((res) => res.json())
+    safeFetchJson<{ invoice: any }>(`/api/invoices/${id}`)
       .then((data) => setInvoice(data.invoice))
       .catch(() => {});
-    fetch("/api/settings")
-      .then((res) => res.json())
+    safeFetchJson<{ settings: any }>("/api/settings")
       .then((data) => setSettings(data.settings))
       .catch(() => {});
   }, [id]);

@@ -3,6 +3,7 @@ import Layout from "@/components/Layout";
 import Input from "@/components/Input";
 import TextArea from "@/components/TextArea";
 import Select from "@/components/Select";
+import { safeFetchJson } from "@/lib/apiClient";
 import { getServerSession } from "next-auth";
 import type { GetServerSideProps } from "next";
 import { authOptions } from "../api/auth/[...nextauth]";
@@ -23,12 +24,16 @@ export default function SettingsPage() {
   const [error, setError] = useState("");
 
   async function load() {
-    const [settingsRes, templateRes] = await Promise.all([
-      fetch("/api/settings"),
-      fetch("/api/templates")
-    ]);
-    setSettings((await settingsRes.json()).settings);
-    setTemplates((await templateRes.json()).templates ?? []);
+    try {
+      const [settingsData, templateData] = await Promise.all([
+        safeFetchJson<{ settings: any }>("/api/settings"),
+        safeFetchJson<{ templates: Template[] }>("/api/templates")
+      ]);
+      setSettings(settingsData.settings);
+      setTemplates(templateData.templates ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذر تحميل الإعدادات");
+    }
   }
 
   useEffect(() => {
@@ -37,28 +42,28 @@ export default function SettingsPage() {
 
   async function saveSettings() {
     setError("");
-    const res = await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(settings)
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error ?? "تعذر حفظ الإعدادات");
+    try {
+      await safeFetchJson("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings)
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذر حفظ الإعدادات");
     }
   }
 
   async function saveTemplate() {
     if (!editingTemplate) return;
     setError("");
-    const res = await fetch("/api/templates", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editingTemplate)
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error ?? "تعذر حفظ القالب");
+    try {
+      await safeFetchJson("/api/templates", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editingTemplate)
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذر حفظ القالب");
       return;
     }
     setEditingTemplate(null);
