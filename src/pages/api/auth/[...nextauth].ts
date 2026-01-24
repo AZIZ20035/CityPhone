@@ -17,17 +17,15 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        // إذا كان الإيميل المدخل هو إيميل الأدمن، اسمح بالدخول فوراً بأي كلمة مرور
+        // نستخدم البيانات الظاهرة في صورة جدول Supabase تماماً
         if (credentials?.email?.toLowerCase() === "admin@local.test") {
           return {
-            id: "admin-id",
+            id: "cmkrp742n000014hh2f6546u3", // هذا هو الـ ID الحقيقي من صورتك
             email: "admin@local.test",
-            name: "Admin User",
+            name: "Admin",
             role: "ADMIN"
           };
-        }
-        
-        // إذا فشل ما سبق، لا تسمح بالدخول
+        }        
         return null;
       }
     })
