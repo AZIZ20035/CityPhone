@@ -4,6 +4,10 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 
+if (!process.env.NEXTAUTH_SECRET) {
+  console.warn("NEXTAUTH_SECRET missing; sessions may be unstable.");
+}
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: {

@@ -27,7 +27,12 @@ function validateMinimal(payload: any) {
   return comboA || comboB || count >= 2;
 }
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  context: { requestId: string }
+) {
+  const requestId = context.requestId;
   const user = await getSessionUser(req, res);
   if (!user) {
     return res.status(401).json({ error: "UNAUTHORIZED" });
@@ -35,7 +40,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   if (req.method === "GET") {
     const invoices = await prisma.invoice.findMany({
-      orderBy: { updatedAt: "desc" }
+      orderBy: { createdAt: "desc" }
     });
     return res.json({ invoices });
   }
@@ -51,19 +56,30 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
+        console.info("INVOICE_CREATE_START", {
+          requestId,
+          attempt
+        });
         const invoice = await prisma.$transaction(async (tx) => {
+          console.info("INVOICE_COUNTER_UPSERT", { requestId, attempt });
           await tx.invoiceCounter.upsert({
-            where: { dateKey: "GLOBAL" },
+            where: { id: "GLOBAL" },
             update: {},
-            create: { dateKey: "GLOBAL", counter: 10498 }
+            create: { id: "GLOBAL", counter: 10498 }
           });
+          console.info("INVOICE_COUNTER_READ", { requestId, attempt });
           const current = await tx.invoiceCounter.findUnique({
-            where: { dateKey: "GLOBAL" }
+            where: { id: "GLOBAL" }
           });
           const base = current?.counter ?? 10498;
           const nextValue = Math.max(base + 1, 10499);
+          console.info("INVOICE_COUNTER_UPDATE", {
+            requestId,
+            attempt,
+            nextValue
+          });
           const next = await tx.invoiceCounter.update({
-            where: { dateKey: "GLOBAL" },
+            where: { id: "GLOBAL" },
             data: { counter: nextValue }
           });
 
@@ -72,6 +88,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
           let createdByUserId: string | null = null;
           if (user.id && user.email) {
+            console.info("INVOICE_USER_UPSERT", { requestId, attempt });
             const upserted = await tx.user.upsert({
               where: { email: user.email },
               update: {
@@ -89,29 +106,41 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             createdByUserId = upserted.id;
           }
 
+          console.info("INVOICE_CREATE", {
+            requestId,
+            attempt,
+            invoiceNo
+          });
           return tx.invoice.create({
             data: {
               invoiceNo,
               customerName: payload.customerName?.trim() || null,
               mobile: mobile || null,
-              deviceType: payload.deviceType?.trim() || null,
-              problem: payload.problem?.trim() || null,
-              staffReceiver: payload.staffReceiver?.trim() || null,
-              agreedPrice:
-                payload.agreedPrice !== undefined && payload.agreedPrice !== ""
-                  ? Number(payload.agreedPrice)
+              totalAmount:
+                payload.totalAmount !== undefined && payload.totalAmount !== ""
+                  ? Number(payload.totalAmount)
                   : null,
               createdByUserId
             }
           });
         });
 
+        console.info("INVOICE_CREATE_SUCCESS", {
+          requestId,
+          attempt,
+          invoiceId: invoice.id
+        });
         return res.status(201).json({ invoice });
       } catch (error) {
         if (
           error instanceof Prisma.PrismaClientKnownRequestError &&
           error.code === "P2002"
         ) {
+          console.warn("INVOICE_CREATE_RETRY", {
+            requestId,
+            attempt,
+            code: error.code
+          });
           continue;
         }
         throw error;

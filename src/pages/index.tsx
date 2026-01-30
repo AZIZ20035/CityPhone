@@ -22,10 +22,9 @@ export default function Home() {
   const staffOptions = ["محمد", "زمران", "سالم"];
 
   useEffect(() => {
-    fetch("/api/settings")
-      .then((res) => res.json())
+    safeFetchJson<{ settings: any }>("/api/settings")
       .then((data) => setSettings(data.settings ?? null))
-      .catch(() => {});
+      .catch(() => setSettings(null));
   }, []);
 
   async function submit() {

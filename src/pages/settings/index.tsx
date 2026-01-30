@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import Input from "@/components/Input";
 import TextArea from "@/components/TextArea";
-import Select from "@/components/Select";
 import { safeFetchJson } from "@/lib/apiClient";
 import { getServerSession } from "next-auth";
 import type { GetServerSideProps } from "next";
@@ -98,20 +97,6 @@ export default function SettingsPage() {
             value={settings.shopPhone ?? ""}
             onChange={(event) =>
               setSettings({ ...settings, shopPhone: event.target.value })
-            }
-          />
-          <Input
-            label="مفتاح واتساب (اختياري)"
-            value={settings.whatsappApiKey ?? ""}
-            onChange={(event) =>
-              setSettings({ ...settings, whatsappApiKey: event.target.value })
-            }
-          />
-          <Input
-            label="مفتاح SMS (اختياري)"
-            value={settings.smsApiKey ?? ""}
-            onChange={(event) =>
-              setSettings({ ...settings, smsApiKey: event.target.value })
             }
           />
         </div>

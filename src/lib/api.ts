@@ -36,6 +36,10 @@ export function withApiHandler(handler: Handler) {
         details:
           process.env.NODE_ENV !== "production"
             ? String(error)
+            : undefined,
+        stack:
+          process.env.NODE_ENV !== "production" && error instanceof Error
+            ? error.stack
             : undefined
       });
     }

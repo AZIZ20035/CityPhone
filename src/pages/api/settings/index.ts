@@ -15,10 +15,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       create: {
         id: 1,
         shopName: process.env.SHOP_NAME ?? "محل الصيانة",
-        shopPhone: process.env.SHOP_PHONE ?? "+966500000000",
-        vatRate: 0.15,
-        whatsappApiKey: null,
-        smsApiKey: null
+        shopPhone: process.env.SHOP_PHONE ?? "+966500000000"
       }
     });
     return res.json({ settings });
@@ -34,18 +31,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       where: { id: 1 },
       update: {
         shopName: payload.shopName,
-        shopPhone: payload.shopPhone,
-        vatRate: Number(payload.vatRate ?? 0.15),
-        whatsappApiKey: payload.whatsappApiKey ?? null,
-        smsApiKey: payload.smsApiKey ?? null
+        shopPhone: payload.shopPhone
       },
       create: {
         id: 1,
         shopName: payload.shopName,
-        shopPhone: payload.shopPhone,
-        vatRate: Number(payload.vatRate ?? 0.15),
-        whatsappApiKey: payload.whatsappApiKey ?? null,
-        smsApiKey: payload.smsApiKey ?? null
+        shopPhone: payload.shopPhone
       }
     });
     return res.json({ settings });

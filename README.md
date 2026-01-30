@@ -62,3 +62,8 @@ cp dev.db backup.db
 ```
 npm install && npx prisma generate && npx prisma db push && npm run dev
 ```
+
+## التحقق من حفظ الفاتورة (سكربت)
+```
+node scripts/verify-invoice-save.mjs
+```
