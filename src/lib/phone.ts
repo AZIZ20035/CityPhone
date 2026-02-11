@@ -1,15 +1,15 @@
 export function normalizeMobile(raw: string) {
   const digits = raw.replace(/[^\d+]/g, "");
   let cleaned = digits;
-  if (cleaned.startsWith("00")) {
+  if (cleaned.startsWith("00966")) {
     cleaned = "+" + cleaned.slice(2);
-  }
-  if (cleaned.startsWith("0") && !cleaned.startsWith("+")) {
+  } else if (/^05\d{8}$/.test(cleaned)) {
     cleaned = "+966" + cleaned.slice(1);
-  }
-  if (!cleaned.startsWith("+")) {
+  } else if (!cleaned.startsWith("+")) {
     if (cleaned.startsWith("966")) {
       cleaned = "+" + cleaned;
+    } else if (/^5\d{8}$/.test(cleaned)) {
+      cleaned = "+966" + cleaned;
     }
   }
   return cleaned;

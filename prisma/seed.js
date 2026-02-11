@@ -1,9 +1,14 @@
 const { PrismaClient } = require("@prisma/client");
+const bcrypt = require("bcryptjs");
 
 const prisma = new PrismaClient();
 
 async function main() {
   const adminEmail = process.env.ADMIN_EMAIL ?? "admin@local.test";
+  const adminPassword = process.env.ADMIN_PASSWORD ?? "Admin@123456";
+
+  // Hash the password
+  const passwordHash = await bcrypt.hash(adminPassword, 10);
 
   await prisma.settings.upsert({
     where: { id: 1 },
@@ -15,13 +20,15 @@ async function main() {
     }
   });
 
-await prisma.user.deleteMany({
-  where: { email: adminEmail }
-});
+  await prisma.user.deleteMany({
+    where: { email: adminEmail }
+  });
 
   await prisma.user.create({
     data: {
       email: adminEmail,
+      name: "Admin",
+      passwordHash: passwordHash,
       role: "ADMIN"
     }
   });
@@ -31,6 +38,9 @@ await prisma.user.deleteMany({
     update: {},
     create: { id: "GLOBAL", counter: 10498 }
   });
+
+  console.log("✅ Database seeded successfully!");
+  console.log(`📧 Admin Email: ${adminEmail}`);
 }
 
 main()

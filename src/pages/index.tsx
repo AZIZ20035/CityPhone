@@ -7,6 +7,11 @@ import { useEffect, useState } from "react";
 import { isValidKsaMobile, normalizeMobile } from "@/lib/phone";
 import { safeFetchJson } from "@/lib/apiClient";
 
+type FieldErrors = {
+  mobile?: string;
+  general?: string;
+};
+
 export default function Home() {
   const [customerName, setCustomerName] = useState("");
   const [mobile, setMobile] = useState("");
@@ -14,7 +19,7 @@ export default function Home() {
   const [problem, setProblem] = useState("");
   const [agreedPrice, setAgreedPrice] = useState("");
   const [staffReceiver, setStaffReceiver] = useState<string | null>(null);
-  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [savedInvoice, setSavedInvoice] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
@@ -27,19 +32,41 @@ export default function Home() {
       .catch(() => setSettings(null));
   }, []);
 
+  function clearFieldError(field: keyof FieldErrors) {
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  }
+
   async function submit() {
-    setError("");
+    const errors: FieldErrors = {};
+
+    // Validate mobile format if provided
+    if (mobile.trim()) {
+      if (!isValidKsaMobile(mobile)) {
+        errors.mobile = "رقم جوال غير صحيح. الصيغة الصحيحة: 05XXXXXXXX";
+      }
+    }
+
+    // Validate minimum required fields
     const values = [customerName, mobile, deviceType, problem].filter(
       (value) => value.trim().length > 0
     );
     const comboA = customerName.trim() && deviceType.trim();
     const comboB = mobile.trim() && problem.trim();
     if (!(comboA || comboB || values.length >= 2)) {
-      setError(
-        "أدخل على الأقل أي حقلين (مثل: اسم العميل + نوع الجهاز) أو (رقم الجوال + المشكلة)."
-      );
+      errors.general =
+        "أدخل على الأقل أي حقلين (مثل: اسم العميل + نوع الجهاز) أو (رقم الجوال + المشكلة).";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
+
+    setFieldErrors({});
     setSaving(true);
     try {
       const data = await safeFetchJson<{ invoice: any }>("/api/invoices", {
@@ -56,7 +83,9 @@ export default function Home() {
       });
       setSavedInvoice(data.invoice);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "تعذر حفظ الفاتورة");
+      setFieldErrors({
+        general: err instanceof Error ? err.message : "تعذر حفظ الفاتورة"
+      });
     }
     setSaving(false);
   }
@@ -68,6 +97,7 @@ export default function Home() {
     setProblem("");
     setAgreedPrice("");
     setSavedInvoice(null);
+    setFieldErrors({});
   }
 
   const canSend = savedInvoice?.mobile
@@ -79,18 +109,18 @@ export default function Home() {
 
   const messageText = savedInvoice
     ? [
-        `فاتورتك رقم ${savedInvoice.invoiceNo}.`,
-        savedInvoice.customerName
-          ? `العميل: ${savedInvoice.customerName}.`
-          : null,
-        savedInvoice.deviceType
-          ? `الجهاز: ${savedInvoice.deviceType}.`
-          : null,
-        savedInvoice.problem ? `المشكلة: ${savedInvoice.problem}.` : null,
-        settings?.shopPhone ? `للاستفسار: ${settings.shopPhone}` : null
-      ]
-        .filter(Boolean)
-        .join(" ")
+      `فاتورتك رقم ${savedInvoice.invoiceNo}.`,
+      savedInvoice.customerName
+        ? `العميل: ${savedInvoice.customerName}.`
+        : null,
+      savedInvoice.deviceType
+        ? `الجهاز: ${savedInvoice.deviceType}.`
+        : null,
+      savedInvoice.problem ? `المشكلة: ${savedInvoice.problem}.` : null,
+      settings?.shopPhone ? `للاستفسار: ${settings.shopPhone}` : null
+    ]
+      .filter(Boolean)
+      .join(" ")
     : "";
 
   async function sendMessage(channel: "WHATSAPP" | "SMS") {
@@ -108,7 +138,9 @@ export default function Home() {
       });
       window.open(data.url, "_blank");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "تعذر إرسال الرسالة");
+      setFieldErrors({
+        general: err instanceof Error ? err.message : "تعذر إرسال الرسالة"
+      });
     }
     setSending(false);
   }
@@ -116,7 +148,14 @@ export default function Home() {
   return (
     <Layout title="إضافة فاتورة">
       <div className="rounded bg-white p-6 shadow-sm">
-        {error && <p className="mb-4 text-sm text-rose-600">{error}</p>}
+        {fieldErrors.general && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            <svg className="h-4 w-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            {fieldErrors.general}
+          </div>
+        )}
         <div className="mb-4">
           <div className="mb-1 text-sm text-slate-700">اسم الموظف المستلم</div>
           <div className="inline-flex rounded border border-slate-200 p-1">
@@ -125,11 +164,10 @@ export default function Home() {
                 key={option}
                 type="button"
                 onClick={() => setStaffReceiver(option)}
-                className={`rounded px-3 py-1 text-sm ${
-                  staffReceiver === option
-                    ? "bg-slate-900 text-white"
-                    : "text-slate-600"
-                }`}
+                className={`rounded px-3 py-1 text-sm ${staffReceiver === option
+                  ? "bg-slate-900 text-white"
+                  : "text-slate-600"
+                  }`}
               >
                 {option}
               </button>
@@ -140,27 +178,40 @@ export default function Home() {
           <Input
             label="اسم العميل"
             value={customerName}
-            onChange={(event) => setCustomerName(event.target.value)}
+            onChange={(event) => {
+              setCustomerName(event.target.value);
+            }}
           />
           <Input
             label="رقم الجوال"
             value={mobile}
-            onChange={(event) => setMobile(event.target.value)}
+            placeholder="05XXXXXXXX"
+            error={fieldErrors.mobile}
+            onChange={(event) => {
+              setMobile(event.target.value);
+              clearFieldError("mobile");
+            }}
           />
           <Input
             label="نوع الجهاز"
             value={deviceType}
-            onChange={(event) => setDeviceType(event.target.value)}
+            onChange={(event) => {
+              setDeviceType(event.target.value);
+            }}
           />
           <Input
             label="المشكلة"
             value={problem}
-            onChange={(event) => setProblem(event.target.value)}
+            onChange={(event) => {
+              setProblem(event.target.value);
+            }}
           />
           <Input
-            label="سعر المتفق عليه"
+            label="السعر المتفق عليه"
             value={agreedPrice}
-            onChange={(event) => setAgreedPrice(event.target.value)}
+            onChange={(event) => {
+              setAgreedPrice(event.target.value);
+            }}
           />
         </div>
 
@@ -197,7 +248,7 @@ export default function Home() {
               تفريغ
             </button>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               className="rounded border border-slate-200 px-4 py-2"
               onClick={() =>
@@ -231,7 +282,10 @@ export default function Home() {
               إرسال الاثنين
             </button>
             {!canSend && (
-              <span className="text-sm text-rose-600">
+              <span className="flex items-center gap-1 text-sm text-rose-600">
+                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
                 لا يمكن الإرسال بدون رقم جوال صحيح.
               </span>
             )}

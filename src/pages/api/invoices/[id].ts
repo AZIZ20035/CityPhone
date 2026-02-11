@@ -24,12 +24,26 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       data: {
         customerName: payload.customerName ?? undefined,
         mobile: payload.mobile ?? undefined,
+        deviceType: payload.deviceType ?? undefined,
+        problem: payload.problem ?? undefined,
+        staffReceiver: payload.staffReceiver ?? undefined,
+        agreedPrice:
+          payload.agreedPrice !== undefined && payload.agreedPrice !== ""
+            ? Number(payload.agreedPrice)
+            : payload.agreedPrice === ""
+              ? null
+              : undefined,
         totalAmount:
           payload.totalAmount !== undefined && payload.totalAmount !== ""
             ? Number(payload.totalAmount)
             : payload.totalAmount === ""
               ? null
-              : undefined
+              : undefined,
+        deviceStatus: payload.deviceStatus ?? undefined,
+        contactedCustomer: payload.contactedCustomer ?? undefined,
+        isDelivered: payload.isDelivered ?? undefined,
+        deliveredAt: payload.deliveredAt ?? undefined,
+        receiverName: payload.receiverName ?? undefined
       }
     });
     return res.json({ invoice });

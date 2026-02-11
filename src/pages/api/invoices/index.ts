@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
-import { normalizeMobile } from "@/lib/phone";
+import { normalizeMobile, isValidKsaMobile } from "@/lib/phone";
 import { formatSimpleInvoice } from "@/lib/invoice";
 import { withApiHandler } from "@/lib/api";
 
@@ -51,6 +51,13 @@ async function handler(
       return res.status(400).json({
         error:
           "أدخل على الأقل أي حقلين (مثل: اسم العميل + نوع الجهاز) أو (رقم الجوال + المشكلة)."
+      });
+    }
+
+    if (payload.mobile && payload.mobile.trim() && !isValidKsaMobile(payload.mobile)) {
+      return res.status(400).json({
+        error: "رقم جوال غير صحيح. الصيغة الصحيحة: 05XXXXXXXX",
+        field: "mobile"
       });
     }
 
@@ -116,6 +123,13 @@ async function handler(
               invoiceNo,
               customerName: payload.customerName?.trim() || null,
               mobile: mobile || null,
+              deviceType: payload.deviceType?.trim() || null,
+              problem: payload.problem?.trim() || null,
+              staffReceiver: payload.staffReceiver?.trim() || null,
+              agreedPrice:
+                payload.agreedPrice !== undefined && payload.agreedPrice !== ""
+                  ? Number(payload.agreedPrice)
+                  : null,
               totalAmount:
                 payload.totalAmount !== undefined && payload.totalAmount !== ""
                   ? Number(payload.totalAmount)

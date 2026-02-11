@@ -1,33 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
 model User {
-  id       String   @id @default(cuid())
-  email    String   @unique
-  role     String   @default("ADMIN")
-  invoices Invoice[]
+  id           String       @id @default(cuid())
+  email        String       @unique
+  role         String       @default("ADMIN")
+  name         String?
+  passwordHash String?
+  invoices     Invoice[]
+  messageLogs  MessageLog[]
 }
 
 model Invoice {
-  id              String   @id @default(cuid())
-  invoiceNo       String   @unique
-  customerName    String?
-  mobile          String?
-  totalAmount     Float?
-  createdAt       DateTime @default(now())
-  createdByUserId String?
-  user            User?    @relation(fields: [createdByUserId], references: [id])
+  id                String       @id @default(cuid())
+  invoiceNo         String       @unique
+  customerName      String?
+  mobile            String?
+  deviceType        String?
+  problem           String?
+  staffReceiver     String?
+  agreedPrice       Float?
+  totalAmount       Float?
+  deviceStatus      String       @default("NEW")
+  contactedCustomer Boolean      @default(false)
+  isDelivered       Boolean      @default(false)
+  receivedAt        DateTime     @default(now())
+  deliveredAt       DateTime?
+  receiverName      String?
+  createdAt         DateTime     @default(now())
+  createdByUserId   String?
+  user              User?        @relation(fields: [createdByUserId], references: [id])
+  messageLogs       MessageLog[]
 }
 
 model Settings {
-  id        Int    @id @default(1)
+  id        Int    @id @default(autoincrement())
   shopName  String @default("سيتي فون")
   shopPhone String @default("0000000000")
 }
@@ -35,4 +49,29 @@ model Settings {
 model InvoiceCounter {
   id      String @id @default("GLOBAL")
   counter Int    @default(10498)
+}
+
+model MessageLog {
+  id           String   @id @default(cuid())
+  invoiceId    String
+  channel      String
+  templateCode String?
+  toMobile     String
+  messageBody  String
+  status       String
+  sentByUserId String?
+  createdAt    DateTime @default(now())
+  sentBy       User?    @relation(fields: [sentByUserId], references: [id])
+  invoice      Invoice  @relation(fields: [invoiceId], references: [id])
+}
+
+model MessageTemplate {
+  id        String   @id @default(cuid())
+  channel   String
+  code      String   @unique
+  titleAr   String
+  bodyAr    String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
