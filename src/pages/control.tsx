@@ -1,340 +1,376 @@
-import { useEffect, useState } from "react";
-import Layout from "@/components/Layout";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/router";
-import { safeFetchJson } from "@/lib/apiClient";
 import { getServerSession } from "next-auth";
 import type { GetServerSideProps } from "next";
 import { authOptions } from "./api/auth/[...nextauth]";
+import Layout from "@/components/Layout";
+import Badge from "@/components/Badge";
+import Input from "@/components/Input";
+import Select from "@/components/Select";
+import { safeFetchJson } from "@/lib/apiClient";
+import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+import {
+    Search,
+    Filter,
+    Calendar,
+    ChevronLeft,
+    ChevronRight,
+    MoreVertical,
+    ArrowUpDown,
+    Laptop,
+    User,
+    Phone,
+    Clock
+} from "lucide-react";
 
 type Invoice = {
-  id: string;
-  invoiceNo: string;
-  customerName?: string | null;
-  mobile?: string | null;
-  deviceType?: string | null;
-  problem?: string | null;
-  deviceStatus: string;
-  contactedCustomer: boolean;
-  staffReceiver?: string | null;
-  isDelivered: boolean;
-  receivedAt: string;
-  deliveredAt?: string | null;
-};
-
-const statusLabels: Record<string, string> = {
-  NEW: "جديد",
-  RECEIVED: "تم استلام الجهاز",
-  IN_PROGRESS: "جاري تجهيزه",
-  WAITING_PARTS: "في احتياج إلى قطع",
-  NO_PARTS: "داخلي – لا يُرسل للعميل (لا توجد قطعة)",
-  READY: "جاهز",
-  DELIVERED: "تم التسليم",
-  REFUSED: "تم التواصل والعميل رفض"
+    id: string;
+    invoiceNo: string;
+    customerName: string | null;
+    mobile: string | null;
+    deviceType: string | null;
+    problem: string | null;
+    deviceStatus: string;
+    createdAt: string;
+    totalAmount: number | null;
+    isDelivered: boolean;
 };
 
 export default function ControlPanel() {
-  const router = useRouter();
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [filter, setFilter] = useState<"ALL" | "PENDING" | "READY" | "WAITING">(
-    "ALL"
-  );
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [receivedDateFilter, setReceivedDateFilter] = useState<string | null>(
-    null
-  );
-  const [deliveredDateFilter, setDeliveredDateFilter] = useState<string | null>(
-    null
-  );
-  const [deliverTarget, setDeliverTarget] = useState<Invoice | null>(null);
-  const [receiverName, setReceiverName] = useState("العميل نفسه");
-  const [delivering, setDelivering] = useState(false);
+    const router = useRouter();
+    const [invoices, setInvoices] = useState<Invoice[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState(String(router.query.status || "ALL"));
+    const [dateFilter, setDateFilter] = useState(String(router.query.receivedDate || "ALL"));
 
-  async function load() {
-    try {
-      const data = await safeFetchJson<{ invoices: Invoice[] }>("/api/invoices");
-      setInvoices(data.invoices ?? []);
-    } catch (err) {
-      setInvoices([]);
-    }
-  }
+    useEffect(() => {
+        async function fetchData() {
+            try {
+                const data = await safeFetchJson<{ invoices: Invoice[] }>("/api/invoices");
+                setInvoices(data.invoices || []);
+            } catch (error) {
+                console.error("Failed to fetch invoices", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchData();
+    }, []);
 
-  useEffect(() => {
-    load();
-  }, []);
+    // Update filters when query params change
+    useEffect(() => {
+        if (router.query.status) setStatusFilter(String(router.query.status));
+        if (router.query.receivedDate) setDateFilter(String(router.query.receivedDate));
+    }, [router.query]);
 
-  useEffect(() => {
-    if (!router.isReady) return;
-    const status = router.query.status as string | undefined;
-    const receivedDate = router.query.receivedDate as string | undefined;
-    const deliveredDate = router.query.deliveredDate as string | undefined;
-    if (status) {
-      setStatusFilter(status);
-      if (status === "DELIVERED") setFilter("ALL");
-      if (status === "READY") setFilter("READY");
-      if (status === "WAITING_PARTS") setFilter("WAITING");
-    }
-    if (receivedDate) setReceivedDateFilter(receivedDate);
-    if (deliveredDate) setDeliveredDateFilter(deliveredDate);
-  }, [router.isReady, router.query]);
+    const filteredInvoices = useMemo(() => {
+        return invoices.filter((inv) => {
+            const matchesSearch =
+                (inv.customerName?.toLowerCase().includes(search.toLowerCase()) ||
+                    inv.mobile?.includes(search) ||
+                    inv.invoiceNo.includes(search) ||
+                    inv.deviceType?.toLowerCase().includes(search.toLowerCase()));
 
-  const filtered = invoices.filter((invoice) => {
-    if (filter === "PENDING" && invoice.isDelivered) return false;
-    if (filter === "READY" && invoice.deviceStatus !== "READY") return false;
-    if (filter === "WAITING" && invoice.deviceStatus !== "WAITING_PARTS")
-      return false;
-    if (statusFilter) {
-      if (statusFilter === "DELIVERED" && !invoice.isDelivered) return false;
-      if (statusFilter !== "DELIVERED" && invoice.deviceStatus !== statusFilter)
-        return false;
-    }
-    if (receivedDateFilter === "today") {
-      if (new Date(invoice.receivedAt).toDateString() !== new Date().toDateString())
-        return false;
-    }
-    if (deliveredDateFilter === "today") {
-      if (
-        !invoice.deliveredAt ||
-        new Date(invoice.deliveredAt).toDateString() !==
-          new Date().toDateString()
-      )
-        return false;
-    }
-    if (!search.trim()) return true;
-    const q = search.trim();
+            const matchesStatus = statusFilter === "ALL" ||
+                (statusFilter === "DELIVERED" ? inv.isDelivered : inv.deviceStatus === statusFilter);
+
+            const matchesDate = dateFilter === "ALL" || (
+                dateFilter === "today" &&
+                new Date(inv.createdAt).toDateString() === new Date().toDateString()
+            );
+
+            return matchesSearch && matchesStatus && matchesDate;
+        });
+    }, [invoices, search, statusFilter, dateFilter]);
+
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: { staggerChildren: 0.05 }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 10 },
+        visible: { opacity: 1, y: 0 }
+    };
+
     return (
-      invoice.invoiceNo.toLowerCase().includes(q.toLowerCase()) ||
-      (invoice.mobile ?? "").includes(q)
-    );
-  });
-
-  return (
-    <Layout title="لوحة التحكم">
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded border border-slate-200 p-1 text-sm">
-          <button
-            className={`rounded px-3 py-1 ${
-              filter === "ALL" ? "bg-slate-900 text-white" : "text-slate-600"
-            }`}
-            onClick={() => {
-              setFilter("ALL");
-              setStatusFilter(null);
-              setReceivedDateFilter(null);
-              setDeliveredDateFilter(null);
-            }}
-          >
-            الكل
-          </button>
-          <button
-            className={`rounded px-3 py-1 ${
-              filter === "PENDING"
-                ? "bg-slate-900 text-white"
-                : "text-slate-600"
-            }`}
-            onClick={() => setFilter("PENDING")}
-          >
-            لم يتم التسليم
-          </button>
-          <button
-            className={`rounded px-3 py-1 ${
-              filter === "READY" ? "bg-slate-900 text-white" : "text-slate-600"
-            }`}
-            onClick={() => setFilter("READY")}
-          >
-            جاهزة للتسليم
-          </button>
-          <button
-            className={`rounded px-3 py-1 ${
-              filter === "WAITING"
-                ? "bg-slate-900 text-white"
-                : "text-slate-600"
-            }`}
-            onClick={() => setFilter("WAITING")}
-          >
-            في انتظار القطع
-          </button>
-        </div>
-        <input
-          className="w-full max-w-xs rounded border border-slate-200 px-3 py-2 text-sm"
-          placeholder="بحث برقم الفاتورة أو الجوال"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-      </div>
-      <div className="overflow-x-auto rounded bg-white shadow-sm">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-500">
-            <tr>
-              <th className="px-4 py-3 text-right">رقم الفاتورة</th>
-              <th className="px-4 py-3 text-right">وقت الاستلام</th>
-              <th className="px-4 py-3 text-right">وقت التسليم</th>
-              <th className="px-4 py-3 text-right">العميل</th>
-              <th className="px-4 py-3 text-right">الجوال</th>
-              <th className="px-4 py-3 text-right">نوع الجهاز</th>
-              <th className="px-4 py-3 text-right">الموظف</th>
-              <th className="px-4 py-3 text-right">الحالة</th>
-              <th className="px-4 py-3 text-right">حالة الجهاز</th>
-              <th className="px-4 py-3 text-right">تم التواصل؟</th>
-              <th className="px-4 py-3 text-right">إجراءات</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((invoice) => (
-              <tr
-                key={invoice.id}
-                className={`border-t hover:bg-slate-50 ${
-                  invoice.deviceStatus === "READY" && !invoice.isDelivered
-                    ? "bg-green-50"
-                    : ""
-                }`}
-                onClick={() =>
-                  (window.location.href = `/invoices/${invoice.id}`)
-                }
-              >
-                <td className="px-4 py-3">{invoice.invoiceNo}</td>
-                <td className="px-4 py-3">
-                  {new Date(invoice.receivedAt).toLocaleString("ar-SA")}
-                </td>
-                <td className="px-4 py-3">
-                  {invoice.deliveredAt
-                    ? new Date(invoice.deliveredAt).toLocaleString("ar-SA")
-                    : "-"}
-                </td>
-                <td className="px-4 py-3">{invoice.customerName ?? "-"}</td>
-                <td className="px-4 py-3">{invoice.mobile ?? "-"}</td>
-                <td className="px-4 py-3">{invoice.deviceType ?? "-"}</td>
-                <td className="px-4 py-3">{invoice.staffReceiver ?? "-"}</td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`rounded px-2 py-1 text-xs ${
-                      invoice.isDelivered
-                        ? "bg-green-100 text-green-700"
-                        : "bg-orange-100 text-orange-700"
-                    }`}
-                  >
-                    {invoice.isDelivered ? "تم التسليم" : "لم يتم التسليم"}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  {statusLabels[invoice.deviceStatus] ?? invoice.deviceStatus}
-                </td>
-                <td className="px-4 py-3">
-                  {invoice.contactedCustomer ? "نعم" : "لا"}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap gap-2">
-                    {!invoice.isDelivered && (
-                      <button
-                        className="rounded bg-slate-900 px-3 py-1 text-xs text-white"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setDeliverTarget(invoice);
-                          setReceiverName("العميل نفسه");
-                        }}
-                      >
-                        تسليم الجهاز
-                      </button>
-                    )}
-                    <button
-                      className="rounded border border-slate-200 px-3 py-1 text-xs"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        window.open(
-                          `/invoices/${invoice.id}/print`,
-                          "_blank"
-                        );
-                      }}
+        <Layout>
+            <div className="space-y-6">
+                {/* Header Actions */}
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <h1 className="text-2xl font-black text-text-main tracking-tight">إدارة القائمة</h1>
+                        <p className="text-text-muted font-bold">متابعة وتحديث حالات أجهزة الصيانة</p>
+                    </div>
+                    <Link
+                        href="/"
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-black text-white shadow-xl shadow-primary/20 transition-all hover:opacity-90 active:scale-95"
                     >
-                      طباعة
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {!filtered.length && (
-              <tr>
-                <td className="px-4 py-6 text-center text-slate-500" colSpan={11}>
-                  لا توجد بيانات
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+                        <PlusIcon className="h-4 w-4" />
+                        <span>إضافة فاتورة جديدة</span>
+                    </Link>
+                </div>
 
-      {deliverTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 px-4">
-          <div className="w-full max-w-md rounded bg-white p-4 shadow-lg">
-            <div className="text-sm font-semibold text-slate-700">
-              تسليم الجهاز
+                {/* Filters Card */}
+                <div className="rounded-3xl border border-border bg-surface p-6 shadow-sm">
+                    <div className="grid gap-6 md:grid-cols-4 lg:grid-cols-5">
+                        <div className="md:col-span-2">
+                            <label className="mb-2 block text-xs font-black text-text-muted uppercase tracking-widest mr-1">
+                                بحث سريع
+                            </label>
+                            <div className="relative">
+                                <Search className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-subtle" />
+                                <input
+                                    type="text"
+                                    placeholder="ابحث بالاسم، الرقم، أو نوع الجهاز..."
+                                    className="w-full rounded-2xl border border-border bg-surface-elevated py-3.5 pl-4 pr-11 text-sm font-bold transition-all focus:border-primary focus:bg-surface focus:ring-4 focus:ring-primary/10 outline-none placeholder:text-text-subtle/50"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="mb-2 block text-xs font-black text-text-muted uppercase tracking-widest mr-1">
+                                الحالة
+                            </label>
+                            <select
+                                className="w-full rounded-2xl border border-border bg-surface-elevated px-4 py-3.5 text-sm font-bold outline-none transition-all focus:border-primary focus:bg-surface focus:ring-4 focus:ring-primary/10"
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                            >
+                                <option value="ALL">الكل</option>
+                                <option value="NEW">جديد</option>
+                                <option value="WAITING_PARTS">في انتظار القطع</option>
+                                <option value="READY">جاهزة للتسليم</option>
+                                <option value="DELIVERED">تم التسليم</option>
+                                <option value="REFUSED">تم الرفض</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="mb-2 block text-xs font-black text-text-muted uppercase tracking-widest mr-1">
+                                التاريخ
+                            </label>
+                            <select
+                                className="w-full rounded-2xl border border-border bg-surface-elevated px-4 py-3.5 text-sm font-bold outline-none transition-all focus:border-primary focus:bg-surface focus:ring-4 focus:ring-primary/10"
+                                value={dateFilter}
+                                onChange={(e) => setDateFilter(e.target.value)}
+                            >
+                                <option value="ALL">كل الأوقات</option>
+                                <option value="today">اليوم</option>
+                            </select>
+                        </div>
+
+                        <div className="flex items-end">
+                            <button
+                                onClick={() => {
+                                    setSearch("");
+                                    setStatusFilter("ALL");
+                                    setDateFilter("ALL");
+                                    router.push("/control", undefined, { shallow: true });
+                                }}
+                                className="w-full rounded-2xl border border-border bg-surface py-3.5 text-sm font-black text-text-muted transition-all hover:bg-surface-elevated hover:text-text-main active:scale-95"
+                            >
+                                إعادة ضبط
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Table/List Area */}
+                <div className="overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-right text-sm">
+                            <thead className="bg-surface-elevated/50 border-b border-border">
+                                <tr>
+                                    <th className="px-6 py-5 font-black text-text-muted uppercase tracking-widest text-xs">
+                                        <div className="flex items-center gap-1">
+                                            <span>رقم الفاتورة</span>
+                                            <ArrowUpDown className="h-3 w-3 opacity-30" />
+                                        </div>
+                                    </th>
+                                    <th className="px-6 py-5 font-black text-text-muted uppercase tracking-widest text-xs">
+                                        <div className="flex items-center gap-1">
+                                            <span>العميل</span>
+                                        </div>
+                                    </th>
+                                    <th className="px-6 py-5 font-black text-text-muted uppercase tracking-widest text-xs">
+                                        <div className="flex items-center gap-1">
+                                            <span>الجهاز / المشكلة</span>
+                                        </div>
+                                    </th>
+                                    <th className="px-6 py-5 font-black text-text-muted uppercase tracking-widest text-xs">
+                                        <div className="flex items-center gap-1">
+                                            <span>الحالة</span>
+                                        </div>
+                                    </th>
+                                    <th className="px-6 py-5 font-black text-text-muted uppercase tracking-widest text-xs">
+                                        <div className="flex items-center gap-1">
+                                            <span>التاريخ</span>
+                                        </div>
+                                    </th>
+                                    <th className="px-6 py-5 font-black text-text-muted uppercase tracking-widest text-xs">
+                                        <span className="sr-only">إجراءات</span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/50">
+                                <AnimatePresence mode="popLayout">
+                                    {loading ? (
+                                        // Skeleton Rows
+                                        [...Array(5)].map((_, i) => (
+                                            <tr key={`skeleton-${i}`} className="animate-pulse">
+                                                <td className="px-6 py-6"><div className="h-5 w-20 rounded-lg bg-surface-elevated" /></td>
+                                                <td className="px-6 py-6">
+                                                    <div className="space-y-2">
+                                                        <div className="h-5 w-32 rounded-lg bg-surface-elevated" />
+                                                        <div className="h-4 w-24 rounded-lg bg-surface-elevated/50" />
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-6">
+                                                    <div className="space-y-2">
+                                                        <div className="h-5 w-40 rounded-lg bg-surface-elevated" />
+                                                        <div className="h-4 w-32 rounded-lg bg-surface-elevated/50" />
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-6"><div className="h-7 w-24 rounded-full bg-surface-elevated" /></td>
+                                                <td className="px-6 py-6"><div className="h-5 w-28 rounded-lg bg-surface-elevated" /></td>
+                                                <td className="px-6 py-6"><div className="h-10 w-10 rounded-xl bg-surface-elevated" /></td>
+                                            </tr>
+                                        ))
+                                    ) : filteredInvoices.length > 0 ? (
+                                        filteredInvoices.map((inv) => (
+                                            <motion.tr
+                                                key={inv.id}
+                                                layout
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                                className="group transition-colors hover:bg-surface-elevated/50"
+                                            >
+                                                <td className="px-6 py-5">
+                                                    <span className="font-mono text-[11px] font-black tracking-tighter text-primary bg-primary/5 px-3 py-1.5 rounded-lg border border-primary/10">
+                                                        {inv.invoiceNo}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-black text-text-main">{inv.customerName || "—"}</span>
+                                                        <span className="text-xs font-bold text-text-muted">{inv.mobile || "—"}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-2 text-text-main font-black">
+                                                            <Laptop className="h-4 w-4 text-text-subtle" />
+                                                            <span>{inv.deviceType || "—"}</span>
+                                                        </div>
+                                                        <span className="text-xs font-bold text-text-muted line-clamp-1 mt-0.5">{inv.problem || "—"}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <Badge status={inv.isDelivered ? "DELIVERED" : inv.deviceStatus} />
+                                                </td>
+                                                <td className="px-6 py-5 whitespace-nowrap">
+                                                    <div className="flex items-center gap-2 text-xs font-bold text-text-muted bg-surface-elevated/50 px-3 py-1.5 rounded-full w-fit">
+                                                        <Clock className="h-3.5 w-3.5 text-text-subtle" />
+                                                        <span>{new Date(inv.createdAt).toLocaleDateString("ar-SA", {
+                                                            year: 'numeric',
+                                                            month: 'short',
+                                                            day: 'numeric'
+                                                        })}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-5 text-left">
+                                                    <Link
+                                                        href={`/invoices/${inv.id}`}
+                                                        className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-surface text-text-subtle transition-all hover:border-primary hover:bg-primary/5 hover:text-primary active:scale-95"
+                                                    >
+                                                        <ChevronLeft className="h-5 w-5" />
+                                                    </Link>
+                                                </td>
+                                            </motion.tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={6} className="px-6 py-24 text-center">
+                                                <div className="flex flex-col items-center justify-center space-y-4">
+                                                    <div className="h-20 w-20 rounded-3xl bg-surface-elevated flex items-center justify-center shadow-inner">
+                                                        <Search className="h-10 w-10 text-text-subtle/50" />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <p className="font-black text-lg text-text-main">لم يتم العثور على أي نتائج</p>
+                                                        <p className="text-sm font-bold text-text-muted">جرب تغيير إعدادات البحث أو الفلاتر</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </AnimatePresence>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Pagination Footer */}
+                    {!loading && filteredInvoices.length > 0 && (
+                        <div className="flex items-center justify-between border-t border-border bg-surface-elevated/20 px-6 py-5 text-sm font-bold text-text-muted">
+                            <div className="flex items-center gap-3">
+                                <button className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface transition-all hover:bg-surface-elevated disabled:opacity-30" disabled>
+                                    <ChevronRight className="h-5 w-5" />
+                                </button>
+                                <div className="flex items-center gap-2 px-2">
+                                    <span className="font-black text-text-main">1</span>
+                                    <span className="text-text-subtle">من</span>
+                                    <span className="font-black text-text-main">1</span>
+                                </div>
+                                <button className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface transition-all hover:bg-surface-elevated disabled:opacity-30" disabled>
+                                    <ChevronLeft className="h-5 w-5" />
+                                </button>
+                            </div>
+                            <div className="bg-surface px-4 py-2 rounded-xl border border-border shadow-sm">
+                                إجمالي النتائج: <span className="font-black text-text-main mr-1">{filteredInvoices.length}</span>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
-            <div className="mt-2 text-sm text-slate-500">
-              الفاتورة: {deliverTarget.invoiceNo}
-            </div>
-            <div className="mt-4">
-              <label className="block text-sm text-slate-700">
-                اسم المستلم
-                <input
-                  className="mt-1 w-full rounded border border-slate-200 px-3 py-2 text-sm"
-                  value={receiverName}
-                  onChange={(event) => setReceiverName(event.target.value)}
-                />
-              </label>
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                className="rounded border border-slate-200 px-4 py-2 text-sm"
-                onClick={() => setDeliverTarget(null)}
-                disabled={delivering}
-              >
-                إلغاء
-              </button>
-              <button
-                className="rounded bg-slate-900 px-4 py-2 text-sm text-white"
-                onClick={async () => {
-                  setDelivering(true);
-                  const data = await safeFetchJson<{ invoice: Invoice }>(
-                    `/api/invoices/${deliverTarget.id}`,
-                    {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        isDelivered: true,
-                        receiverName: receiverName || "العميل نفسه",
-                        deviceStatus: "DELIVERED"
-                      })
-                    }
-                  );
-                    setInvoices((prev) =>
-                      prev.map((inv) =>
-                        inv.id === deliverTarget.id ? data.invoice : inv
-                      )
-                    );
-                    setDeliverTarget(null);
-                  setDelivering(false);
-                }}
-                disabled={delivering}
-              >
-                تأكيد التسليم
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </Layout>
-  );
+        </Layout>
+    );
+}
+
+function PlusIcon(props: any) {
+    return (
+        <svg
+            {...props}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+    );
 }
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
-  const session = await getServerSession(
-    context.req,
-    context.res,
-    authOptions
-  );
-  if (!session) {
-    return {
-      redirect: { destination: "/login", permanent: false }
-    };
-  }
-  return { props: {} };
+    const session = await getServerSession(
+        context.req,
+        context.res,
+        authOptions
+    );
+    if (!session) {
+        return {
+            redirect: { destination: "/login", permanent: false }
+        };
+    }
+    return { props: {} };
 };
