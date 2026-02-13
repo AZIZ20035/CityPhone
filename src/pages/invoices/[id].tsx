@@ -26,7 +26,8 @@ import {
   ClipboardList,
   UserCheck,
   Smartphone,
-  Info
+  Info,
+  Trash2
 } from "lucide-react";
 import Link from "next/link";
 
@@ -143,6 +144,19 @@ export default function InvoiceDetails() {
   const normalizedMobile = useMemo(() => {
     return invoice?.mobile ? normalizeMobile(invoice.mobile) : "";
   }, [invoice?.mobile]);
+
+  async function deleteInvoice() {
+    if (!window.confirm("هل أنت متأكد من مسح هذه الفاتورة نهائياً؟")) return;
+    setSaving(true);
+    setError("");
+    try {
+      await safeFetchJson(`/api/invoices/${id}`, { method: "DELETE" });
+      router.push("/control");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذر مسح الفاتورة");
+      setSaving(false);
+    }
+  }
 
   async function sendMessage(channel: "WHATSAPP" | "SMS") {
     if (!canSend) return;
@@ -510,18 +524,29 @@ export default function InvoiceDetails() {
               </button>
             </div>
 
-            <button
-              onClick={save}
-              disabled={saving}
-              className="flex items-center gap-3 rounded-[1.25rem] bg-primary px-10 py-3.5 text-base font-black text-white shadow-2xl shadow-primary/30 transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
-            >
-              {saving ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              ) : (
-                <Save className="h-5 w-5" />
-              )}
-              <span>حفظ التعديلات</span>
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={deleteInvoice}
+                disabled={saving}
+                className="flex items-center gap-3 rounded-[1.25rem] border border-danger/20 bg-danger-bg px-6 py-3.5 text-sm font-black text-danger transition-all hover:bg-danger hover:text-white hover:shadow-lg hover:shadow-danger/20 active:scale-95 disabled:opacity-50"
+              >
+                <Trash2 className="h-5 w-5" />
+                <span className="hidden sm:inline">مسح الفاتورة</span>
+              </button>
+
+              <button
+                onClick={save}
+                disabled={saving}
+                className="flex items-center gap-3 rounded-[1.25rem] bg-primary px-10 py-3.5 text-base font-black text-white shadow-2xl shadow-primary/30 transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
+              >
+                {saving ? (
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : (
+                  <Save className="h-5 w-5" />
+                )}
+                <span>حفظ التعديلات</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -601,7 +626,7 @@ export default function InvoiceDetails() {
           )}
         </AnimatePresence>
       </div>
-    </Layout>
+    </Layout >
   );
 }
 

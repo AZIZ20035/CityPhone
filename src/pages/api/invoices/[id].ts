@@ -49,6 +49,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.json({ invoice });
   }
 
+  if (req.method === "DELETE") {
+    // First delete related message logs
+    await prisma.messageLog.deleteMany({
+      where: { invoiceId: id }
+    });
+    // Then delete the invoice
+    await prisma.invoice.delete({
+      where: { id }
+    });
+    return res.status(204).end();
+  }
+
   return res.status(405).json({ error: "METHOD_NOT_ALLOWED" });
 }
 
