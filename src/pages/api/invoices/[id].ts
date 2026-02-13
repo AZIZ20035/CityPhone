@@ -3,9 +3,16 @@ import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { withApiHandler } from "@/lib/api";
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  _context: { requestId: string }
+) {
   const user = await getSessionUser(req, res);
-  if (!user) return res.status(401).json({ error: "UNAUTHORIZED" });
+  if (!user) {
+    res.status(401).json({ error: "UNAUTHORIZED" });
+    return;
+  }
 
   const id = String(req.query.id);
 
@@ -13,8 +20,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const invoice = await prisma.invoice.findUnique({
       where: { id }
     });
-    if (!invoice) return res.status(404).json({ error: "NOT_FOUND" });
-    return res.json({ invoice });
+    if (!invoice) {
+      res.status(404).json({ error: "NOT_FOUND" });
+      return;
+    }
+    res.json({ invoice });
+    return;
   }
 
   if (req.method === "PATCH") {
@@ -46,7 +57,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         receiverName: payload.receiverName ?? undefined
       }
     });
-    return res.json({ invoice });
+    res.json({ invoice });
+    return;
   }
 
   if (req.method === "DELETE") {
@@ -58,10 +70,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     await prisma.invoice.delete({
       where: { id }
     });
-    return res.status(204).end();
+    res.status(204).end();
+    return;
   }
 
-  return res.status(405).json({ error: "METHOD_NOT_ALLOWED" });
+  res.status(405).json({ error: "METHOD_NOT_ALLOWED" });
 }
 
 export default withApiHandler(handler);
