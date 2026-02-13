@@ -9,9 +9,42 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!user) return res.status(401).json({ error: "UNAUTHORIZED" });
 
   if (req.method === "GET") {
-    const templates = await prisma.messageTemplate.findMany({
+    let templates = await prisma.messageTemplate.findMany({
       orderBy: { code: "asc" }
     });
+
+    if (templates.length === 0) {
+      // Auto-seed default templates
+      const defaultTemplates = [
+        {
+          code: "RECEIVED",
+          titleAr: "استلام الجهاز",
+          bodyAr: "عزيزي العميل، تم استلام جهازك {device_name} تحت رقم الفاتورة {invoice_no}. سنوافيكم بالتحديثات فوراً. {shop_name}",
+          channel: "WHATSAPP",
+        },
+        {
+          code: "READY",
+          titleAr: "الجهاز جاهز",
+          bodyAr: "عزيزي العميل، جهازك {device_name} (فاتورة رقم {invoice_no}) جاهز للاستلام. التكلفة: {final_cost} ريال. {shop_name}",
+          channel: "WHATSAPP",
+        },
+        {
+          code: "DELIVERED",
+          titleAr: "تم التسليم",
+          bodyAr: "تم تسليم جهازك بنجاح. شكرًا لثقتكم بـ {shop_name}. يسعدنا خدمتكم دائماً.",
+          channel: "WHATSAPP",
+        }
+      ];
+
+      for (const t of defaultTemplates) {
+        await prisma.messageTemplate.create({ data: t });
+      }
+
+      templates = await prisma.messageTemplate.findMany({
+        orderBy: { code: "asc" }
+      });
+    }
+
     return res.json({ templates });
   }
 

@@ -25,7 +25,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-900 text-white shadow-lg shadow-primary-900/20 transition-transform group-hover:scale-105">
                                 <Smartphone className="h-5 w-5" />
                             </div>
-                            <span className="text-xl font-black text-text-main tracking-tight">سيتي فون</span>
+                            <span className="text-xl font-black text-text-main tracking-tight">سيتي فون برو</span>
                         </Link>
 
                         <nav className="hidden md:flex items-center gap-1">

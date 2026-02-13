@@ -108,15 +108,15 @@ export default function Home() {
 
     const messageText = savedInvoice
         ? [
-            `فاتورتك رقم ${savedInvoice.invoiceNo}.`,
+            `فاتورتك رقم "${savedInvoice.invoiceNo}".`,
             savedInvoice.customerName
-                ? `العميل: ${savedInvoice.customerName}.`
+                ? `العميل: "${savedInvoice.customerName}".`
                 : null,
             savedInvoice.deviceType
-                ? `الجهاز: ${savedInvoice.deviceType}.`
+                ? `الجهاز: "${savedInvoice.deviceType}".`
                 : null,
-            savedInvoice.problem ? `المشكلة: ${savedInvoice.problem}.` : null,
-            settings?.shopPhone ? `للاستفسار: ${settings.shopPhone}` : null
+            savedInvoice.problem ? `المشكلة: "${savedInvoice.problem}".` : null,
+            settings?.shopPhone ? `للاستفسار: "${settings.shopPhone}"` : null
         ]
             .filter(Boolean)
             .join(" ")
@@ -135,7 +135,11 @@ export default function Home() {
                     customBody: messageText
                 })
             });
-            window.open(data.url, "_blank");
+
+            // Fix: Directly open the URL if API returns it.
+            if (data.url) {
+                window.open(data.url, "_blank");
+            }
         } catch (err) {
             setFieldErrors({
                 general: err instanceof Error ? err.message : "تعذر إرسال الرسالة"

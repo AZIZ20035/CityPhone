@@ -119,7 +119,7 @@ export default function InvoiceDetails() {
       IN_PROGRESS: "جاري العمل على جهازك {deviceType} تحت رقم الفاتورة {invoiceNo}.",
       WAITING_PARTS: "فاتورتك رقم {invoiceNo} بانتظار وصول القطع. سنبلغك فور وصولها.",
       READY: "جهازك ({deviceType}) جاهز للاستلام. رقم الفاتورة {invoiceNo}. السعر: {price} ريال.",
-      DELIVERED: "تم تسليم جهازك بنجاح. شكرًا لثقتكم بسيتي فون.",
+      DELIVERED: "تم تسليم جهازك بنجاح. شكرًا لثقتكم بسيتي فون برو.",
       REFUSED: "تم تحديث الفاتورة رقم {invoiceNo}: العميل رفض الإصلاح."
     };
     return templates[status] ?? templates.RECEIVED;

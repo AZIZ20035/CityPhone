@@ -180,7 +180,7 @@ export default function SettingsPage() {
               <div className="grid gap-6 md:grid-cols-2">
                 <Input
                   label="اسم المتجر"
-                  placeholder="مثلاً: سيتي فون للصيانة"
+                  placeholder="مثلاً: سيتي فون برو للصيانة"
                   value={settings.shopName ?? ""}
                   onChange={(event) =>
                     setSettings({ ...settings, shopName: event.target.value })

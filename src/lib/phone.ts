@@ -5,11 +5,11 @@ export function normalizeMobile(raw: string) {
     cleaned = "+" + cleaned.slice(2);
   } else if (/^05\d{8}$/.test(cleaned)) {
     cleaned = "+966" + cleaned.slice(1);
+  } else if (/^5\d{8}$/.test(cleaned)) {
+    cleaned = "+966" + cleaned;
   } else if (!cleaned.startsWith("+")) {
     if (cleaned.startsWith("966")) {
       cleaned = "+" + cleaned;
-    } else if (/^5\d{8}$/.test(cleaned)) {
-      cleaned = "+966" + cleaned;
     }
   }
   return cleaned;

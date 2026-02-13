@@ -57,7 +57,7 @@ export default function Login() {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-primary-900 text-white shadow-2xl shadow-primary-900/20 ring-4 ring-surface">
             <Smartphone className="h-8 w-8" />
           </div>
-          <h1 className="text-3xl font-black text-text-main tracking-tight">سيتي فون</h1>
+          <h1 className="text-3xl font-black text-text-main tracking-tight">سيتي فون برو</h1>
           <p className="mt-2 text-text-muted font-bold tracking-wide">نظام إدارة صيانة الاتصالات الذكي</p>
         </div>
 
@@ -142,7 +142,7 @@ export default function Login() {
 
         {/* Footer Info */}
         <p className="mt-8 text-center text-xs font-black text-text-subtle uppercase tracking-widest">
-          &copy; {new Date().getFullYear()} سيتي فون للصيانة. جميع الحقوق محفوظة.
+          &copy; {new Date().getFullYear()} سيتي فون برو للصيانة. جميع الحقوق محفوظة.
         </p>
       </motion.div>
     </div>
