@@ -328,23 +328,6 @@ export default function Home() {
                             </div>
                         )}
                     </AnimatePresence>
-
-                    <div className="bg-primary rounded-3xl p-6 text-white shadow-xl shadow-primary/20 overflow-hidden relative group transition-transform hover:scale-[1.02]">
-                        <div className="relative z-10">
-                            <h4 className="font-black mb-2 flex items-center gap-2">
-                                <span className="h-4 w-1 bg-white/30 rounded-full" />
-                                نصيحة تقنية
-                            </h4>
-                            <p className="text-sm font-bold text-white/80 leading-relaxed">
-                                يمكنك دائماً طباعة الفاتورة للعميل لضمان حقوقه. النظام يدعم الطباعة الحرارية والمقاسات القياسية.
-                            </p>
-                        </div>
-                        <div className="absolute -bottom-6 -left-6 opacity-10 transition-transform group-hover:scale-110 group-hover:rotate-12">
-                            <svg className="h-32 w-32" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                            </svg>
-                        </div>
-                    </div>
                 </div>
             </div>
         </Layout>
