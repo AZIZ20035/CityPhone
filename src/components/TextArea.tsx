@@ -12,7 +12,7 @@ export default function TextArea({ label, ...props }: Props) {
       </label>
       <textarea
         {...props}
-        className={`w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm font-medium outline-none transition-all duration-200 focus:border-primary focus:ring-4 focus:ring-primary/10 min-h-[120px] ${props.className ?? ""}`}
+        className={`w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm font-medium text-text-main outline-none transition-all duration-200 focus:border-primary focus:ring-4 focus:ring-primary/10 min-h-[120px] ${props.className ?? ""}`}
       />
     </div>
   );
